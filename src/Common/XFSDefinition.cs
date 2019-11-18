@@ -67,6 +67,7 @@ namespace XFSNet
         public const int WFS_ERR_UNSUPP_DATA = -56;
         public const int WFS_ERR_FRAUD_ATTEMPT = -57;
         public const int WFS_ERR_SEQUENCE_ERROR = -58;
+        public const int WFS_ERR_AUTH_REQUIRED = -59;
         #endregion
         public const int WFS_INDEFINITE_WAIT = 0;
         #region Message-No
