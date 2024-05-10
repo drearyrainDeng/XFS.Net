@@ -270,6 +270,7 @@ namespace XFSNet
         protected void ExecuteCommand(int commandCode, IntPtr ptrParam, Action<string, int, string> errorHandler = null)
         {
             int hResult = XfsApi.WFSAsyncExecute(hService, commandCode, ptrParam, TimeOut, MessageHandle, ref requestID);
+            Marshal.FreeHGlobal(ptrParam);
             if (hResult != XFSDefinition.WFS_SUCCESS && errorHandler != null)
                 errorHandler(serviceName, hResult, string.Empty);
         }

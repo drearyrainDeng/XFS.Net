@@ -9,8 +9,22 @@ namespace XFSNet.PIN
 {
     public unsafe class PIN : XFSDeviceBase<WFSPINSTATUS, WFSPINCAPS>
     {
+
+        #region Events
+        public event Action GetDataComplete;
         public event Action<int> GetDataError;
         public event Action<string> PINKey;
+        #endregion
+
+        public PIN()
+        {
+            commandHandlers = new Dictionary<int, XFSCommandHandler>();
+            eventHandlers = new Dictionary<int, XFSEventHandler>();
+            
+            commandHandlers.Add(PINDefinition.WFS_CMD_PIN_GET_DATA, new XFSCommandHandler(OnGetDataError, OnGetDataComplete));
+            eventHandlers.Add(PINDefinition.WFS_EXEE_PIN_KEY, new XFSEventHandler(null, OnPINKey));
+        }
+
         public void GetData(ushort maxLen, bool autoEnd, XFSPINKey activeKeys, XFSPINKey terminateKeys, XFSPINKey activeFDKs = XFSPINKey.WFS_PIN_FK_UNUSED,
             XFSPINKey terminateFDKs = XFSPINKey.WFS_PIN_FK_UNUSED)
         {
@@ -24,39 +38,25 @@ namespace XFSNet.PIN
             int len = Marshal.SizeOf(typeof(WFSPINGETDATA));
             IntPtr ptr = Marshal.AllocHGlobal(len);
             Marshal.StructureToPtr(inputData, ptr, false);
-            int hResult = XfsApi.WFSAsyncExecute(hService, PINDefinition.WFS_CMD_PIN_GET_DATA, ptr, 0, Handle, ref requestID);
-            Marshal.FreeHGlobal(ptr);
-            if (hResult != XFSDefinition.WFS_SUCCESS)
-                OnGetDataError(hResult);
+            ExecuteCommand(PINDefinition.WFS_CMD_PIN_GET_DATA, ptr, OnGetDataError);
         }
-        protected override void OnExecuteComplete(ref WFSRESULT result)
+        protected virtual void OnGetDataComplete()
         {
-            switch (result.dwCommandCodeOrEventID)
-            {
-                case PINDefinition.WFS_CMD_PIN_GET_DATA:
-                    if (result.hResult != XFSDefinition.WFS_SUCCESS)
-                        OnGetDataError(result.hResult);
-                    break;
-            }
+            if (GetDataComplete != null)
+                GetDataComplete();
         }
-        protected override void OnExecuteEvent(ref WFSRESULT result)
-        {
-            switch (result.dwCommandCodeOrEventID)
-            {
-                case PINDefinition.WFS_EXEE_PIN_KEY:
-                    WFSPINKEY key = new XFSNet.PIN.WFSPINKEY();
-                    XFSUtil.PtrToStructure(result.lpBuffer, ref key);
-                    OnPINKey(ref key);
-                    break;
-            }
-        }
-        protected virtual void OnGetDataError(int code)
+
+        protected virtual void OnGetDataError(string service, int code, string message)
         {
             if (GetDataError != null)
                 GetDataError(code);
         }
-        protected virtual void OnPINKey(ref WFSPINKEY key)
+
+        protected virtual void OnPINKey(IntPtr ptr)
         {
+            WFSPINKEY key = new WFSPINKEY();
+            XFSUtil.PtrToStructure(ptr, ref key);
+
             if (PINKey != null)
                 PINKey(key.ulDigit.ToString().Substring(11));
         }
